@@ -1,18 +1,28 @@
-FROM node:20-alpine
+FROM node:20-slim
 
+# Instalar Git e dependências básicas
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git ca-certificates tini \
+    && rm -rf /var/lib/apt/lists/*
+
+# Diretório de trabalho
 WORKDIR /app
 
-# Copia manifestos primeiro para aproveitar cache
-COPY package*.json ./
+# Copiar arquivos de dependência
+COPY package.json package-lock.json* ./
 
-# Sem package-lock? Use install (não ci)
-RUN npm install --omit=dev
+# Instalar dependências
+RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi
 
-# Copia o código
-COPY ./src ./src
+# Copiar restante do código
+COPY . .
 
-ENV PORT=3000
+# Porta
 EXPOSE 3000
 
-# Inicia a app
+# Variável de ambiente
+ENV NODE_ENV=production
+
+# Entrypoint e comando
+ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["npm", "start"]
