@@ -152,4 +152,17 @@ app.get('/session', auth, (_req, res) => {
   res.json({ connected: !!sockRef.sock?.user, user: sockRef.sock?.user || null });
 });
 
+app.post('/logout', auth, async (_req, res) => {
+  try {
+    if (sockRef.sock) await sockRef.sock.logout().catch(() => {});
+    const authDir = path.join(DATA_DIR, 'auth');
+    fs.rmSync(authDir, { recursive: true, force: true });
+    lastQr = null;
+    res.json({ ok: true, message: 'Sessão apagada. Reinicie o serviço para gerar novo QR.' });
+    setTimeout(() => process.exit(0), 500);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.listen(PORT, () => logger.info(`HTTP on :${PORT}`));
