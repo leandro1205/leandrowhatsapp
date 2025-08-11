@@ -9,6 +9,8 @@ import qrcode from 'qrcode-terminal';
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
+import QRCode from 'qrcode';
+
 
 const logger = Pino({ level: 'info' });
 const app = express();
@@ -33,6 +35,8 @@ const DATA_DIR = '/app/data';
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 let sockRef = { sock: null };
+let lastQr = null;
+
 
 function normalizeNumber(num) {
   let n = String(num).replace(/[^\d]/g, '');
@@ -63,6 +67,8 @@ async function start() {
   sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
     if (qr) {
       logger.info('Escaneie o QR abaixo:');
+              lastQr = qr;
+      
       qrcode.generate(qr, { small: true });
     }
     if (connection === 'close') {
@@ -128,7 +134,20 @@ app.post('/send', auth, async (req, res) => {
   }
 });
 
-// status
+
+app.get('/', async (req, res) => {
+  try {
+    if (!lastQr) {
+      return res.send('<h2>Aguardando geração do QR Code…</h2>');
+    }
+    const dataUrl = await QRCode.toDataURL(lastQr);
+    return res.send('<html><body><h2>Escaneie o QR Code para conectar</h2><img src="' + dataUrl + '" alt="QR Code"></body></html>');
+  } catch (err) {
+    return res.status(500).send('Erro ao gerar QR Code');
+  }
+});
+
+/ status
 app.get('/session', auth, (_req, res) => {
   res.json({ connected: !!sockRef.sock?.user, user: sockRef.sock?.user || null });
 });
