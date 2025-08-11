@@ -147,7 +147,7 @@ app.get('/', async (req, res) => {
   }
 });
 
-/ status
+// status
 app.get('/session', auth, (_req, res) => {
   res.json({ connected: !!sockRef.sock?.user, user: sockRef.sock?.user || null });
 });
